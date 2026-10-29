@@ -1,7 +1,14 @@
 import React from 'react';
 import { db, childMultiSkillConfig, skillsByName } from '../data/simData';
 import { roll } from '../utils/generator';
-import { getAspirationRuleCheck } from '../data/legacyChallengeData';
+import { 
+  getAspirationRuleCheck, 
+  generationGoalsList, 
+  miscFunList, 
+  conventionalCareersList, 
+  unconventionalCareersList, 
+  maritalStatuses 
+} from '../data/legacyChallengeData';
 
 interface QuickRollersProps {
   onLog: (text: string) => void;
@@ -112,11 +119,9 @@ export const QuickRollers: React.FC<QuickRollersProps> = ({ onLog, onUpdateLastR
           className="bg-amber-950/80 hover:bg-amber-800 text-amber-300 border border-amber-600/50 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow"
           onClick={() => {
             const dice = Math.floor(Math.random() * 80) + 1;
-            import('../data/legacyChallengeData').then(m => {
-              const goal = m.generationGoalsList.find(g => g.id === dice) || m.generationGoalsList[0];
-              const sealedNote = goal.id === 12 ? ' <span class="text-amber-400 font-semibold">[🔒 Noted on Heir\'s challenges: Aspects cannot be rolled before aging as Adult]</span>' : '';
-              appendToLog(`👑 Rolled <strong>Generation Goal #${goal.id}:</strong> <span class="text-amber-300 font-bold">${goal.title}</span> [${goal.pack}] — ${goal.description}${sealedNote}`);
-            });
+            const goal = generationGoalsList.find(g => g.id === dice) || generationGoalsList[0];
+            const sealedNote = goal.id === 12 ? ' <span class="text-amber-400 font-semibold">[🔒 Noted on Heir\'s challenges: Aspects cannot be rolled before aging as Adult]</span>' : '';
+            appendToLog(`👑 Rolled <strong>Generation Goal #${goal.id}:</strong> <span class="text-amber-300 font-bold">${goal.title}</span> [${goal.pack}] — ${goal.description}${sealedNote}`);
           }}
         >
           🎯 Roll Goal (1–80)
@@ -125,10 +130,8 @@ export const QuickRollers: React.FC<QuickRollersProps> = ({ onLog, onUpdateLastR
           className="bg-rose-950/80 hover:bg-rose-800 text-rose-300 border border-rose-600/50 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow"
           onClick={() => {
             const dice = Math.floor(Math.random() * 78) + 1;
-            import('../data/legacyChallengeData').then(m => {
-              const fun = m.miscFunList.find(f => f.id === dice) || m.miscFunList[0];
-              appendToLog(`🎪 Rolled <strong>Misc Fun #${fun.id}:</strong> <span class="text-rose-300 font-bold">${fun.title}</span> [${fun.pack}] — ${fun.description}`);
-            });
+            const fun = miscFunList.find(f => f.id === dice) || miscFunList[0];
+            appendToLog(`🎪 Rolled <strong>Misc Fun #${fun.id}:</strong> <span class="text-rose-300 font-bold">${fun.title}</span> [${fun.pack}] — ${fun.description}`);
           }}
         >
           🎪 Roll Misc Fun (1–78)
@@ -137,10 +140,8 @@ export const QuickRollers: React.FC<QuickRollersProps> = ({ onLog, onUpdateLastR
           className="bg-emerald-950/80 hover:bg-emerald-800 text-emerald-300 border border-emerald-600/50 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow"
           onClick={() => {
             const dice = Math.floor(Math.random() * 82) + 1;
-            import('../data/legacyChallengeData').then(m => {
-              const u = m.unconventionalCareersList.find(c => c.id === dice) || m.unconventionalCareersList[0];
-              appendToLog(`💼 Rolled <strong>Unconventional Career #${u.id}:</strong> <span class="text-emerald-300 font-bold">${u.name}</span> [${u.pack}] — ${u.description}`);
-            });
+            const u = unconventionalCareersList.find(c => c.id === dice) || unconventionalCareersList[0];
+            appendToLog(`💼 Rolled <strong>Unconventional Career #${u.id}:</strong> <span class="text-emerald-300 font-bold">${u.name}</span> [${u.pack}] — ${u.description}`);
           }}
         >
           🎨 Unconventional Job (1–82)
@@ -149,10 +150,8 @@ export const QuickRollers: React.FC<QuickRollersProps> = ({ onLog, onUpdateLastR
           className="bg-sky-950/80 hover:bg-sky-800 text-sky-300 border border-sky-600/50 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow"
           onClick={() => {
             const dice = Math.floor(Math.random() * 65) + 1;
-            import('../data/legacyChallengeData').then(m => {
-              const c = m.conventionalCareersList.find(car => car.id === dice) || m.conventionalCareersList[0];
-              appendToLog(`💼 Rolled <strong>Conventional Career #${c.id}:</strong> <span class="text-sky-300 font-bold">${c.name} (${c.branch})</span> [${c.pack}]`);
-            });
+            const c = conventionalCareersList.find(car => car.id === dice) || conventionalCareersList[0];
+            appendToLog(`💼 Rolled <strong>Conventional Career #${c.id}:</strong> <span class="text-sky-300 font-bold">${c.name} (${c.branch})</span> [${c.pack}]`);
           }}
         >
           🏢 Conventional Job (1–65)
@@ -161,10 +160,8 @@ export const QuickRollers: React.FC<QuickRollersProps> = ({ onLog, onUpdateLastR
           className="bg-purple-950/80 hover:bg-purple-800 text-purple-300 border border-purple-600/50 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow"
           onClick={() => {
             const dice = Math.floor(Math.random() * 54) + 1;
-            import('../data/legacyChallengeData').then(m => {
-              const status = m.maritalStatuses.find(s => dice >= s.minRoll && dice <= s.maxRoll) || m.maritalStatuses[0];
-              appendToLog(`💍 Rolled <strong>Marital Status [Dice ${dice}/54]:</strong> <span class="text-purple-300 font-bold">${status.title}</span> — ${status.description}`);
-            });
+            const status = maritalStatuses.find(s => dice >= s.minRoll && dice <= s.maxRoll) || maritalStatuses[0];
+            appendToLog(`💍 Rolled <strong>Marital Status [Dice ${dice}/54]:</strong> <span class="text-purple-300 font-bold">${status.title}</span> — ${status.description}`);
           }}
         >
           💍 Marital Status (1–54)
