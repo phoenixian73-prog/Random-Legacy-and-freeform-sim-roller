@@ -5,36 +5,35 @@ const distPath = path.resolve('dist/index.html');
 const rootAppPath = path.resolve('SimologyManager.html');
 
 if (fs.existsSync(distPath)) {
-  let html = fs.readFileSync(distPath, 'utf8');
+  const html = fs.readFileSync(distPath, 'utf8');
+  const assetsDir = path.resolve('dist/assets');
+  let jsCode = '';
+  let cssCode = '';
 
-  // Extract inlined script tag from <head> and place it at bottom of <body> after <div id="root">
-  const scriptRegex = /<script[\s\S]*?<\/script>/i;
-  const match = html.match(scriptRegex);
-  if (match) {
-    let scriptTag = match[0];
-    // Strip type="module" and crossorigin to prevent file:/// browser CORS blocks
-    scriptTag = scriptTag.replace(/<script\s+type="module"\s+crossorigin>/gi, '<script defer>');
-    scriptTag = scriptTag.replace(/<script\s+crossorigin\s+type="module">/gi, '<script defer>');
-    scriptTag = scriptTag.replace(/<script\s+type="module">/gi, '<script defer>');
-    if (!scriptTag.startsWith('<script defer>')) {
-      scriptTag = scriptTag.replace(/<script>/gi, '<script defer>');
-    }
-
-    // Remove from head
-    html = html.replace(scriptRegex, '');
-    // Insert after <div id="root"></div> right before </body>
-    if (html.includes('</body>')) {
-      html = html.replace('</body>', `${scriptTag}\n</body>`);
-    } else {
-      html += `\n${scriptTag}`;
+  if (fs.existsSync(assetsDir)) {
+    const files = fs.readdirSync(assetsDir);
+    for (const file of files) {
+      if (file.endsWith('.js')) {
+        jsCode += fs.readFileSync(path.join(assetsDir, file), 'utf8') + '\n';
+      } else if (file.endsWith('.css')) {
+        cssCode += fs.readFileSync(path.join(assetsDir, file), 'utf8') + '\n';
+      }
     }
   }
 
-  fs.writeFileSync(distPath, html, 'utf8');
-  fs.writeFileSync(rootAppPath, html, 'utf8');
-  console.log('✅ Generated standalone offline HTML files:');
-  console.log('   - dist/index.html');
-  console.log('   - SimologyManager.html (Double-click ready in root folder!)');
+  // Create standalone double-clickable offline HTML file without touching dist/index.html
+  let standaloneHtml = html;
+  if (cssCode) {
+    standaloneHtml = standaloneHtml.replace(/<link[^>]+rel=["']stylesheet["'][^>]*>/gi, `<style>${cssCode}</style>`);
+  }
+  if (jsCode) {
+    standaloneHtml = standaloneHtml.replace(/<script[^>]+src=["'][^"']*assets\/[^"']*\.js["'][^>]*><\/script>/gi, '');
+    standaloneHtml = standaloneHtml.replace('</body>', `<script defer>${jsCode}</script>\n</body>`);
+  }
+
+  fs.writeFileSync(rootAppPath, standaloneHtml, 'utf8');
+  console.log('✅ Standard production dist/ build preserved for Google AI Studio Cloud Run & GitHub Pages');
+  console.log('✅ Self-contained SimologyManager.html generated for local double-clicking');
 } else {
   console.error('❌ dist/index.html not found');
 }
