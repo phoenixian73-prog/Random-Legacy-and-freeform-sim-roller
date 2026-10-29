@@ -543,26 +543,6 @@ export const SimCard: React.FC<SimCardProps> = ({
             </div>
           )}
 
-          {/* Reproductive Pair Compatibility Indicator (Disregarding Gender) */}
-          {(() => {
-            const romanceRels = ["Spouse", "Partner", "Engaged", "WooHoo Partner"];
-            const partnerEntry = Object.entries(sim.customRelations || {}).find(([_, rel]) => romanceRels.includes(rel as string));
-            if (!partnerEntry) return null;
-            const partnerSim = household.find(s => s.id === Number(partnerEntry[0]));
-            if (!partnerSim) return null;
-            return (
-              <div className="mt-1 flex items-center justify-between text-[10.5px] bg-emerald-950/80 border border-emerald-600/50 p-2 rounded-lg text-emerald-300">
-                <div className="flex items-center gap-1.5 font-bold">
-                  <span>🧬</span>
-                  <span>Reproductive Pair (Disregarding Gender):</span>
-                </div>
-                <div className="text-emerald-200 font-semibold text-[10px]">
-                  Sim #{sim.id} ({sim.pregnancy}) ⚭ Sim #{partnerSim.id} ({partnerSim.pregnancy})
-                </div>
-              </div>
-            );
-          })()}
-
           {/* Quick Profile Summary Footer */}
           {!sim.isPet && sim.occult !== 'Servo' && (
             <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-300 pt-1.5 border-t border-slate-800/80">
@@ -614,7 +594,7 @@ export const SimCard: React.FC<SimCardProps> = ({
             onChange={(e) => onOccultChange(sim.id, e.target.value)}
           >
             <option value="None">None</option>
-            {db.occults.filter(o => !isLegacyMode || o !== "Servo").map(o => (
+            {db.occults.filter(o => !isLegacyMode || sim.familyUnitRole === "Helper" || o !== "Servo").map(o => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>

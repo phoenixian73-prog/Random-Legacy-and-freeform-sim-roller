@@ -639,7 +639,11 @@ export function generateImaginaryFriend(linkedSim: Sim, forceId: number = 1): Si
     relationsList: [],
     linkedSimId: linkedSim.id,
     childSkills: childSkills,
-    unlockedAdultSkills: unlockedAdultSkills
+    unlockedAdultSkills: unlockedAdultSkills,
+    familyUnitRole: "Helper",
+    baseRel: "Roommate",
+    branchName: `🧸 Imaginary Friend (Helper for Sim #${linkedSim.id})`,
+    branchBadge: "bg-teal-500/20 text-teal-300 border-teal-500/40"
   };
 }
 
@@ -916,60 +920,9 @@ export function addLotChallenge(currentChallenges: string[], dwellingType?: stri
   return [...currentChallenges, newChallenge];
 }
 
-/**
- * Synchronizes pregnancy mechanics for a romantic couple (disregarding gender).
- * Pairs the couple in a reproductively compatible fashion:
- * Exactly ONE partner is assigned "Can get pregnant" (with nursing milk: "Yes")
- * and the OTHER partner is assigned "Can get others pregnant".
- * Both same-sex and opposite-sex couples are 100% guaranteed biological reproduction.
- */
-export function synchronizeCouplePregnancy(simA: Sim, simB: Sim): void {
-  if (!simA || !simB || simA.isPet || simB.isPet) return;
-  if (simA.occult === "Servo" || simB.occult === "Servo") return;
-
-  const aCanCarry = simA.pregnancy === "Can get pregnant";
-  const aCanImpregnate = simA.pregnancy === "Can get others pregnant";
-  const bCanCarry = simB.pregnancy === "Can get pregnant";
-  const bCanImpregnate = simB.pregnancy === "Can get others pregnant";
-
-  // If already complementarily paired (one carries, one impregnates), keep their assignment
-  if ((aCanCarry && bCanImpregnate) || (aCanImpregnate && bCanCarry)) {
-    return;
-  }
-
-  let carrier: Sim;
-  let impregnator: Sim;
-
-  if (aCanCarry) {
-    carrier = simA;
-    impregnator = simB;
-  } else if (bCanCarry) {
-    carrier = simB;
-    impregnator = simA;
-  } else if (aCanImpregnate) {
-    impregnator = simA;
-    carrier = simB;
-  } else if (bCanImpregnate) {
-    impregnator = simB;
-    carrier = simA;
-  } else {
-    // Neither has a defined reproductive role (or both rolled "Neither")
-    // Disregarding gender: 50/50 randomized designation
-    const aCarries = Math.random() < 0.5;
-    carrier = aCarries ? simA : simB;
-    impregnator = aCarries ? simB : simA;
-  }
-
-  carrier.pregnancy = "Can get pregnant";
-  carrier.milk = "Yes";
-  if (!carrier.toilet || carrier.toilet === "N/A") {
-    carrier.toilet = carrier.baseGender === "Male" ? "Standing" : "Sitting";
-  }
-
-  impregnator.pregnancy = "Can get others pregnant";
-  if (!impregnator.toilet || impregnator.toilet === "N/A") {
-    impregnator.toilet = impregnator.baseGender === "Female" ? "Sitting" : "Standing";
-  }
+export function synchronizeCouplePregnancy(_simA: Sim, _simB: Sim): void {
+  // Reproduction pairing rule discarded per user instruction:
+  // Each Sim retains their own authentic individual CAS roll.
 }
 
 export function generateLot(

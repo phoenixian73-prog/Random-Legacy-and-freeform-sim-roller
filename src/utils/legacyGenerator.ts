@@ -654,16 +654,13 @@ export function populateHouseholdFromLegacy(
     partner.customDynamics = { [heirSim.id]: assignedRomDyn };
     heirSim.customDynamics = { ...(heirSim.customDynamics || {}), [partner.id]: assignedRomDyn };
 
-    // Pair couple in a reproductively compatible fashion disregarding gender
-    synchronizeCouplePregnancy(heirSim, partner);
-
     newHousehold.push(partner);
   }
 
   // 3. Helpers based on Marital Status with individual C2 careers
   if (marital.requiresOccult) {
-    // Full Occult House: 3 Occult helpers
-    const occultPool = ["Vampire", "Spellcaster", "Werewolf", "Mermaid", "Alien"];
+    // Full Occult House: Occult helpers (now includes Servo!)
+    const occultPool = ["Vampire", "Spellcaster", "Werewolf", "Mermaid", "Alien", "Servo"];
     for (let h = 0; h < marital.helperCount; h++) {
       if (newHousehold.length >= 8) break;
       const helper = generateSimObject("Young Adult", nextId++, "Human", true);

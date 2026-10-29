@@ -56,6 +56,7 @@ interface RandomLegacyChallengeProps {
   onMemorizeGeneration?: (household: Sim[], lot: Lot, genNumber: number) => void;
   onRollChange?: (roll: LegacyRollResult) => void;
   onChooseRandomHeir?: () => void;
+  onRollCompleteNewSim?: (role: 'partner' | 'helper' | 'general') => void;
 }
 
 export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
@@ -69,6 +70,7 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
   onMemorizeGeneration,
   onRollChange,
   onChooseRandomHeir,
+  onRollCompleteNewSim,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -2070,6 +2072,21 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Roll New Partner in case of divorce or moving away */}
+              <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between flex-wrap gap-2">
+                <div className="text-[11px] text-slate-400">
+                  Divorced, remarried, or need a replacement partner?
+                </div>
+                <button
+                  onClick={() => onRollCompleteNewSim?.('partner')}
+                  className="text-[10.5px] bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-extrabold px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 shadow-md cursor-pointer active:scale-95"
+                  title="Completely roll and add a new spouse/partner to the household (with newly rolled C2 career and romantic dynamic) for post-divorce or move-out replacement"
+                >
+                  <span>💍</span>
+                  <span>Roll & Add New Partner</span>
+                </button>
+              </div>
             </div>
 
             <div className="mt-3 pt-2 border-t border-slate-850 text-[10px] text-slate-500 font-mono">

@@ -47,7 +47,7 @@ import {
   getCompatibleAspirationsForCareer, 
   isAspirationAllowedForCareer 
 } from './utils/aspirationCareerRules';
-import { chooseHeirRandomlyAmongSims, rollHeirCareer, rollMidlifeCrisisAspects, formatCareerLabel, allPackCodes, doesRollRequireResidentialRental } from './utils/legacyGenerator';
+import { chooseHeirRandomlyAmongSims, rollHeirCareer, rollSecondaryCareer, rollMidlifeCrisisAspects, formatCareerLabel, allPackCodes, doesRollRequireResidentialRental } from './utils/legacyGenerator';
 import { generateResidentialRentalConfig } from './utils/rentalRules';
 
 export default function App() {
@@ -440,6 +440,73 @@ export default function App() {
     triggerNotice(`🐾 Pet ${newSim.id} (${newSim.species || 'Pet'}, ${newSim.stage}) added to household! (${newHousehold.length}/${maxHouseholdCapacity})`);
   };
 
+  const handleRollCompleteNewSim = (role: 'partner' | 'helper' | 'general' = 'general') => {
+    if (household.length >= maxHouseholdCapacity) {
+      triggerNotice(`⚠️ Household is full (${household.length}/${maxHouseholdCapacity} Sims)! Increase Max Sims Capacity or move someone away first.`);
+      return;
+    }
+    const newId = household.length ? Math.max(...household.map(s => s.id)) + 1 : 1;
+    const newSim = generateSimObject("Young Adult", newId, "Human", activeMode === 'legacy');
+
+    if (role === 'partner') {
+      const c2Career = rollSecondaryCareer(allPackCodes);
+      newSim.career = formatCareerLabel(c2Career);
+      newSim.branchName = `💍 New Partner / Spouse`;
+      newSim.branchBadge = "bg-pink-500/20 text-pink-300 border-pink-500/40";
+      newSim.familyUnitRole = "Partner";
+      newSim.baseRel = "Spouse";
+
+      const heirSim = household.find(s => s.familyUnitRole === "Heir" || s.id === 1) || household[0];
+      if (heirSim) {
+        newSim.customRelations = { [heirSim.id]: "Spouse" };
+        heirSim.customRelations = { ...(heirSim.customRelations || {}), [newSim.id]: "Spouse" };
+        const romDyn = roll(db.romanceDynamics);
+        newSim.romanticDynamic = romDyn;
+        newSim.customDynamics = { [heirSim.id]: romDyn };
+        heirSim.customDynamics = { ...(heirSim.customDynamics || {}), [newSim.id]: romDyn };
+      }
+
+      if (currentLegacyRoll) {
+        const currentSlots = currentLegacyRoll.secondaryCareers || [];
+        const newSlot = {
+          id: `replacement-partner-${newId}`,
+          role: 'spouse' as const,
+          label: `New Partner / Spouse (Sim #${newId})`,
+          tag: 'Spouse',
+          career: c2Career
+        };
+        const updatedRoll: LegacyRollResult = {
+          ...currentLegacyRoll,
+          secondaryCareer: c2Career,
+          secondaryCareers: [...currentSlots, newSlot]
+        };
+        setCurrentLegacyRoll(updatedRoll);
+      }
+
+      const newHousehold = [...household.map(s => ({ ...s })), newSim];
+      calculateRelations(newHousehold, relationMode, true);
+      setHousehold(newHousehold);
+      triggerNotice(`💍 Completely rolled & added New Partner (Sim #${newSim.id}) with C2 Job: ${c2Career.categoryType} [Divorce / Move-Out replacement]!`);
+    } else if (role === 'helper') {
+      const c2Career = rollSecondaryCareer(allPackCodes);
+      newSim.career = formatCareerLabel(c2Career);
+      newSim.branchName = `🤝 Helper Sim`;
+      newSim.branchBadge = "bg-teal-500/20 text-teal-300 border-teal-500/40";
+      newSim.familyUnitRole = "Helper";
+      newSim.baseRel = "Roommate";
+
+      const newHousehold = [...household.map(s => ({ ...s })), newSim];
+      calculateRelations(newHousehold, relationMode, true);
+      setHousehold(newHousehold);
+      triggerNotice(`🤝 Completely rolled & added New Helper (Sim #${newSim.id}) with C2 Job: ${c2Career.categoryType}!`);
+    } else {
+      const newHousehold = [...household.map(s => ({ ...s })), newSim];
+      calculateRelations(newHousehold, relationMode, true);
+      setHousehold(newHousehold);
+      triggerNotice(`🎲 Completely rolled & added New Sim #${newSim.id} (${newSim.stage}, ${newSim.baseGender}) from scratch!`);
+    }
+  };
+
   const checkHeirDeathSuccession = (householdList: Sim[], deceasedId: number): { updated: Sim[]; notice?: string } => {
     const deceased = householdList.find(s => s.id === deceasedId);
     if (!deceased) return { updated: householdList };
@@ -725,8 +792,8 @@ export default function App() {
       if (!simToRoll || simToRoll.isPet) return prev;
 
       let allowedOccults = [...db.occults];
-      // In Random Legacy Challenge, Servos cannot reproduce biologically and are strictly excluded!
-      if (activeMode === 'legacy') {
+      // In Random Legacy Challenge, Servos cannot reproduce biologically, so exclude for Heirs/Spouses, but ALLOW for Helpers!
+      if (activeMode === 'legacy' && simToRoll.familyUnitRole !== "Helper") {
         allowedOccults = allowedOccults.filter(o => o !== "Servo");
       }
       if (["Infant", "Toddler", "Child", "Teen"].includes(simToRoll.stage)) {
@@ -751,8 +818,9 @@ export default function App() {
   };
 
   const handleOccultChange = (id: number, newOccult: string) => {
-    if (activeMode === 'legacy' && newOccult === "Servo") {
-      triggerNotice("⚠️ Servo cannot reproduce biologically and is excluded in Random Legacy Challenge! Servo is 100% available in Sandbox mode.");
+    const simToChange = household.find(s => s.id === id);
+    if (activeMode === 'legacy' && newOccult === "Servo" && simToChange && simToChange.familyUnitRole !== "Helper") {
+      triggerNotice("⚠️ In Random Legacy Challenge, Servos cannot be Heirs or Spouses because they cannot reproduce, but Servos ARE allowed as Helpers / Roommates!");
       return;
     }
     setHousehold(prev => {
@@ -848,9 +916,9 @@ export default function App() {
           isDoll: false,
           isFunctional: true,
           stage: sim.stage === "Toddler" || sim.stage === "Child" ? "Teen" : sim.stage,
-          familyUnitRole: "Household Member",
-          branchName: "🌟 Imaginary Friend (Made Real • Teen Member)",
-          branchBadge: "bg-gradient-to-r from-purple-500/25 to-pink-500/25 text-pink-300 border-pink-400 font-extrabold shadow-sm",
+          familyUnitRole: "Helper",
+          branchName: "🌟 Imaginary Friend (Made Real • Helper)",
+          branchBadge: "bg-gradient-to-r from-purple-500/25 to-teal-500/25 text-teal-300 border-teal-400 font-extrabold shadow-sm",
           baseRel: "Roommate",
           pregnancy: sim.pregnancy === "N/A" ? roll(db.pregnancyWeighted) : sim.pregnancy,
           milk: sim.milk === "N/A" ? roll(["Yes", "No"]) : sim.milk,
@@ -1427,41 +1495,11 @@ export default function App() {
   };
 
   const handleUpdateCustomGender = (id: number, field: string, value: string) => {
-    setHousehold(prev => {
-      const currentSim = prev.find(s => s.id === id);
-      if (!currentSim) return prev;
-
-      let updated = prev.map(sim => {
-        if (sim.id !== id) return sim;
-        return { ...sim, [field]: value };
-      });
-
-      // If updating pregnancy on a partner in a couple, keep the couple paired in a reproductively compatible fashion disregarding gender!
-      if (field === 'pregnancy') {
-        const romanceRels = ["Spouse", "Partner", "Engaged", "WooHoo Partner"];
-        const partnerEntry = Object.entries(currentSim.customRelations || {}).find(([partnerId, rel]) => 
-          romanceRels.includes(rel as string)
-        );
-        if (partnerEntry) {
-          const partnerId = Number(partnerEntry[0]);
-          updated = updated.map(sim => {
-            if (sim.id !== partnerId) return sim;
-            if (value === "Can get pregnant") {
-              return { ...sim, pregnancy: "Can get others pregnant" };
-            } else if (value === "Can get others pregnant") {
-              return { ...sim, pregnancy: "Can get pregnant", milk: "Yes" };
-            }
-            return sim;
-          });
-          const compRole = value === "Can get pregnant" ? "Can get others pregnant" : "Can get pregnant";
-          triggerNotice(`🧬 Reproductively Paired Couple (Disregarding Gender): Sim ${id} (${value}) ⚭ Sim ${partnerId} (${compRole})!`);
-          return updated;
-        }
-      }
-
-      triggerNotice(`⚙️ Updated Sim ${id}'s CAS setting (${field}) to "${value}"!`);
-      return updated;
-    });
+    setHousehold(prev => prev.map(sim => {
+      if (sim.id !== id) return sim;
+      return { ...sim, [field]: value };
+    }));
+    triggerNotice(`⚙️ Updated Sim ${id}'s CAS setting (${field}) to "${value}"!`);
   };
 
   const handleUpdatePairDynamic = (simAId: number, simBId: number, newDynamic: string) => {
@@ -2315,6 +2353,7 @@ export default function App() {
             onMemorizeGeneration={handleMemorizeGeneration}
             onRollChange={(roll) => setCurrentLegacyRoll(roll)}
             onChooseRandomHeir={handleChooseRandomHeir}
+            onRollCompleteNewSim={handleRollCompleteNewSim}
           />
         ) : (
           <ControlPanel
@@ -2422,7 +2461,7 @@ export default function App() {
                   </div>
 
                   <button
-                    className="bg-slate-800 hover:bg-slate-700 text-sky-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 transition-all flex items-center gap-1.5 shadow"
+                    className="bg-slate-800 hover:bg-slate-700 text-sky-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 transition-all flex items-center gap-1.5 shadow cursor-pointer"
                     onClick={() => {
                       const updated = household.map(s => ({ ...s }));
                       calculateRelations(updated, relationMode);
@@ -2433,6 +2472,24 @@ export default function App() {
                   >
                     <span>🔄</span>
                     <span>Re-roll Co-Living Structure</span>
+                  </button>
+
+                  <button
+                    className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow active:scale-95 cursor-pointer"
+                    onClick={() => handleRollCompleteNewSim('partner')}
+                    title="Completely roll and add a new Spouse / Partner (with newly rolled C2 career and romantic dynamic) for remarriage or post-divorce replacement"
+                  >
+                    <span>💍</span>
+                    <span>Roll New Partner</span>
+                  </button>
+
+                  <button
+                    className="bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow active:scale-95 cursor-pointer"
+                    onClick={() => handleRollCompleteNewSim('general')}
+                    title="Completely roll and add a brand-new Sim from scratch (stage, traits, aspiration, CAS gender, career) in case of divorce or moving someone away"
+                  >
+                    <span>🎲</span>
+                    <span>Roll New Sim (From Scratch)</span>
                   </button>
                 </div>
               </div>
