@@ -523,6 +523,39 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
     onTriggerNotice(`💼 Added and rolled C2 Career for Extra Household Member: ${newCareer.categoryType}`);
   };
 
+  const handleRerollSingleSecondaryCareer = (slotId: string) => {
+    if (!currentRoll) return;
+    const newCareer = rollSecondaryCareer(enabledPacks);
+    const currentList = currentRoll.secondaryCareers && currentRoll.secondaryCareers.length > 0
+      ? currentRoll.secondaryCareers
+      : (currentRoll.secondaryCareer ? [{
+          id: "legacy-partner",
+          role: "spouse" as const,
+          label: "Spouse / Live-in Partner",
+          tag: "Spouse",
+          career: currentRoll.secondaryCareer
+        }] : []);
+
+    let slotLabel = "Secondary Career";
+    const updated = currentList.map(slot => {
+      if (slot.id === slotId) {
+        slotLabel = slot.label;
+        return { ...slot, career: newCareer };
+      }
+      return slot;
+    });
+
+    const newLegacyRoll: LegacyRollResult = {
+      ...currentRoll,
+      secondaryCareer: updated[0]?.career || newCareer,
+      secondaryCareers: updated
+    };
+
+    setCurrentRoll(newLegacyRoll);
+    onRollChange?.(newLegacyRoll);
+    onTriggerNotice(`🎲 Re-rolled ${slotLabel} (C2 Job): ${newCareer.categoryType} [Divorce / Death / Remarriage / Breakup replacement]`);
+  };
+
   const handleRerollGoal = () => {
     if (!currentRoll) return;
     const goal = rollGenerationGoal(generationNumber, enabledPacks);
@@ -2284,7 +2317,7 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
 
                   {/* C2 Secondary Others - Rolled for each spouse and helper */}
                   <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
-                    <div className="flex items-center justify-between text-xs font-bold text-sky-400 mb-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-sky-400 mb-2 flex-wrap gap-1">
                       <div className="flex items-center gap-1.5">
                         <span>C2 Secondary Careers:</span>
                         {secondarySlots.length > 0 && (
@@ -2293,6 +2326,14 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
                           </span>
                         )}
                       </div>
+                      <button
+                        onClick={handleAddOptionalSecondaryCareer}
+                        className="text-[10px] bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-sky-300 border border-slate-700 px-2 py-0.5 rounded font-semibold flex items-center gap-1 cursor-pointer transition-all shadow-sm"
+                        title="Roll an additional C2 job for a new partner, remarriage, or extra helper"
+                      >
+                        <span>➕</span>
+                        <span>Add New C2 Job</span>
+                      </button>
                     </div>
 
                     {secondarySlots.length > 0 ? (
@@ -2310,7 +2351,7 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
                               key={slot.id}
                               className="p-2.5 rounded-lg bg-slate-950/90 border border-slate-800 hover:border-slate-700 text-xs transition-all"
                             >
-                              <div className="flex items-center justify-between gap-1.5 pb-1 mb-1.5 border-b border-slate-850">
+                              <div className="flex items-center justify-between gap-1.5 pb-1 mb-1.5 border-b border-slate-850 flex-wrap">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${badgeBg}`}>
                                     {slot.label}
@@ -2319,6 +2360,14 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
                                     Roll: #{slot.career.categoryRoll}/10 ({slot.career.categoryType})
                                   </span>
                                 </div>
+                                <button
+                                  onClick={() => handleRerollSingleSecondaryCareer(slot.id)}
+                                  className="text-[10px] bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white px-2 py-0.5 rounded border border-slate-700 hover:border-sky-500 font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95"
+                                  title="Re-roll this specific C2 job independently in case of divorce, death, breakup, or remarriage"
+                                >
+                                  <span>🎲</span>
+                                  <span>Re-roll C2 Job</span>
+                                </button>
                               </div>
                               <div
                                 className="text-slate-200 leading-snug pl-0.5 text-xs"

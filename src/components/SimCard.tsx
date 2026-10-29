@@ -536,8 +536,8 @@ export const SimCard: React.FC<SimCardProps> = ({
                   onChange={(e) => onUpdateCustomGender?.(sim.id, 'toilet', e.target.value)}
                   title="Toilet Usage (Standing or Sitting)"
                 >
-                  <option value="Standing">🚽 Uses toilet standing</option>
-                  <option value="Sitting">🚽 Uses toilet sitting</option>
+                  <option value="Standing">Standing</option>
+                  <option value="Sitting">Sitting</option>
                 </select>
               </div>
             </div>
