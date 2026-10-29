@@ -160,6 +160,22 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
     }
   });
 
+  // Minimization toggles for Objectives / Goals and Misc Fun (remembered in localStorage)
+  const [isGoalMinimized, setIsGoalMinimized] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sims4_legacy_goal_minimized') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+  const [isFunMinimized, setIsFunMinimized] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sims4_legacy_fun_minimized') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
   // Auto-sync legacy challenge state to localStorage so reload NEVER loses progress
   useEffect(() => {
     try {
@@ -171,10 +187,12 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
       localStorage.setItem('sims4_legacy_joker_rerolls', String(jokerRerollsAvailable));
       localStorage.setItem('sims4_legacy_enabled_packs', JSON.stringify(Array.from(enabledPacks)));
       localStorage.setItem('sims4_legacy_random_heir_constraint', String(randomHeirConstraintMode));
+      localStorage.setItem('sims4_legacy_goal_minimized', String(isGoalMinimized));
+      localStorage.setItem('sims4_legacy_fun_minimized', String(isFunMinimized));
     } catch (e) {
       console.warn("Failed to auto-save legacy challenge to localStorage:", e);
     }
-  }, [currentRoll, generationNumber, legacyHistory, jokerRerollsAvailable, enabledPacks, randomHeirConstraintMode]);
+  }, [currentRoll, generationNumber, legacyHistory, jokerRerollsAvailable, enabledPacks, randomHeirConstraintMode, isGoalMinimized, isFunMinimized]);
 
   // Keep parent in sync whenever currentRoll updates
   useEffect(() => {
@@ -2337,7 +2355,7 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
           {/* Roll D: Generation Goal */}
           <div className="bg-slate-950/90 border border-slate-800 hover:border-amber-500/50 transition-all rounded-xl p-4 flex flex-col justify-between shadow-lg md:col-span-1 lg:col-span-2">
             <div>
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 flex-wrap gap-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-lg">🎯</span>
                   <span className="text-xs font-extrabold text-amber-400 uppercase tracking-wider">
@@ -2345,6 +2363,14 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => setIsGoalMinimized(prev => !prev)}
+                    className="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1 cursor-pointer transition-colors shadow-sm font-semibold"
+                    title={isGoalMinimized ? "Expand full objectives & rules directives" : "Minimize to compact summary"}
+                  >
+                    <span>{isGoalMinimized ? '➕' : '➖'}</span>
+                    <span>{isGoalMinimized ? 'Expand Details' : 'Minimize Details'}</span>
+                  </button>
                   <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
                     Dice: #{currentRoll.goal.diceRoll}/80
                   </span>
@@ -2366,14 +2392,36 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-extrabold text-base text-amber-300">
-                  #{currentRoll.goal.entry.id}: {currentRoll.goal.entry.title}
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">
-                  {currentRoll.goal.entry.pack}
-                </span>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-extrabold text-base text-amber-300">
+                    #{currentRoll.goal.entry.id}: {currentRoll.goal.entry.title}
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">
+                    {currentRoll.goal.entry.pack}
+                  </span>
+                </div>
+                {isGoalMinimized && (
+                  <span className="text-[10px] font-mono text-amber-400/90 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded">
+                    Compact View Active
+                  </span>
+                )}
               </div>
+
+              {isGoalMinimized ? (
+                <div className="mt-2.5 p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center justify-between gap-3">
+                  <p className="line-clamp-2 leading-relaxed text-slate-300 text-xs">
+                    {currentRoll.goal.entry.description}
+                  </p>
+                  <button
+                    onClick={() => setIsGoalMinimized(false)}
+                    className="text-[11px] text-amber-400 hover:text-amber-300 font-bold shrink-0 underline cursor-pointer bg-slate-950 px-2.5 py-1 rounded border border-amber-900/60"
+                  >
+                    Read Full Rules ➔
+                  </button>
+                </div>
+              ) : (
+                <div className="max-h-64 overflow-y-auto pr-1.5 mt-2 space-y-2.5 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
 
               <p className="text-xs text-slate-200 mt-1.5 leading-relaxed">
                 {currentRoll.goal.entry.description}
@@ -2596,6 +2644,8 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
                   </div>
                 </div>
               )}
+                </div>
+              )}
             </div>
 
             <div className="mt-3 pt-2 border-t border-slate-850 text-[10px] text-slate-500 font-mono">
@@ -2606,7 +2656,7 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
           {/* Roll E: Miscellaneous Fun */}
           <div className="bg-slate-950/90 border border-slate-800 hover:border-rose-500/50 transition-all rounded-xl p-4 flex flex-col justify-between shadow-lg">
             <div>
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 flex-wrap gap-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-lg">🎪</span>
                   <span className="text-xs font-extrabold text-rose-400 uppercase tracking-wider">
@@ -2614,6 +2664,14 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => setIsFunMinimized(prev => !prev)}
+                    className="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1 cursor-pointer transition-colors shadow-sm font-semibold"
+                    title={isFunMinimized ? "Expand full misc fun directives" : "Minimize to compact summary"}
+                  >
+                    <span>{isFunMinimized ? '➕' : '➖'}</span>
+                    <span>{isFunMinimized ? 'Expand Details' : 'Minimize Details'}</span>
+                  </button>
                   <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
                     Dice: #{currentRoll.fun.diceRoll}/78
                   </span>
@@ -2635,24 +2693,45 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-extrabold text-base text-rose-300">
-                  #{currentRoll.fun.entry.id}: {currentRoll.fun.entry.title}
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">
-                  {currentRoll.fun.entry.pack}
-                </span>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-extrabold text-base text-rose-300">
+                    #{currentRoll.fun.entry.id}: {currentRoll.fun.entry.title}
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">
+                    {currentRoll.fun.entry.pack}
+                  </span>
+                </div>
+                {isFunMinimized && (
+                  <span className="text-[10px] font-mono text-rose-400/90 bg-rose-950/60 border border-rose-800/60 px-2 py-0.5 rounded">
+                    Compact View Active
+                  </span>
+                )}
               </div>
 
-              <p className="text-xs text-slate-200 mt-1.5 leading-relaxed">
-                {currentRoll.fun.entry.description}
-              </p>
-
-              {currentRoll.fun.entry.notes && (
-                <div className="mt-2 text-[11px] text-rose-400/90 italic bg-rose-950/30 p-2 rounded border border-rose-900/50">
-                  ⚠️ Note: {currentRoll.fun.entry.notes}
+              {isFunMinimized ? (
+                <div className="mt-2.5 p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center justify-between gap-3">
+                  <p className="line-clamp-2 leading-relaxed text-slate-300 text-xs">
+                    {currentRoll.fun.entry.description}
+                  </p>
+                  <button
+                    onClick={() => setIsFunMinimized(false)}
+                    className="text-[11px] text-rose-400 hover:text-rose-300 font-bold shrink-0 underline cursor-pointer bg-slate-950 px-2.5 py-1 rounded border border-rose-900/60"
+                  >
+                    Read Full Rules ➔
+                  </button>
                 </div>
-              )}
+              ) : (
+                <div className="max-h-56 overflow-y-auto pr-1.5 mt-2 space-y-2.5 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+                  <p className="text-xs text-slate-200 leading-relaxed">
+                    {currentRoll.fun.entry.description}
+                  </p>
+
+                  {currentRoll.fun.entry.notes && (
+                    <div className="text-[11px] text-rose-400/90 italic bg-rose-950/30 p-2 rounded border border-rose-900/50">
+                      ⚠️ Note: {currentRoll.fun.entry.notes}
+                    </div>
+                  )}
 
               {/* Sub-roll for Moody (#4) */}
               {currentRoll.fun.entry.id === 4 && (
@@ -2707,6 +2786,8 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
                 <div className="mt-3 p-2.5 bg-slate-900 rounded-lg border border-slate-700 text-xs">
                   <span className="font-bold text-sky-400">NPC Roommates Required:</span>{' '}
                   <span className="font-mono font-extrabold text-white">{currentRoll.fun.rolledRoommates || 2} Roommates</span>
+                </div>
+              )}
                 </div>
               )}
             </div>

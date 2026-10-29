@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LegacyRollResult, SecondaryCareerSlot, getOrdinal } from '../data/legacyChallengeData';
 import { formatCareerLabel, formatCareerNameOnly, getCareerDetailedExplanation } from '../utils/legacyGenerator';
 
@@ -20,7 +20,38 @@ export const StickyRollsBottomBar: React.FC<StickyRollsBottomBarProps> = ({
   onScrollToRolls,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(() => {
+    try {
+      return localStorage.getItem('sims4_sticky_bar_minimized') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleToggleMinimize = (min: boolean) => {
+    setIsMinimized(min);
+    try {
+      localStorage.setItem('sims4_sticky_bar_minimized', String(min));
+    } catch (e) {}
+  };
+
+  const handleScrollTop = () => {
+    if (onScrollToRolls) {
+      onScrollToRolls();
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const heirCareerName = formatCareerNameOnly(currentRoll.heirCareer);
   const heirCareerExpl = getCareerDetailedExplanation(currentRoll.heirCareer);
@@ -38,83 +69,103 @@ export const StickyRollsBottomBar: React.FC<StickyRollsBottomBarProps> = ({
 
   const heirOrdinal = getOrdinal(currentRoll.children.heirOrder || 1);
 
+  // Floating Back to Top button (always available when scrolled down)
+  const scrollToTopButton = scrollY > 250 ? (
+    <button
+      onClick={handleScrollTop}
+      className="fixed bottom-4 left-4 z-50 bg-slate-900/95 hover:bg-sky-600 text-sky-300 hover:text-white px-3.5 py-2 rounded-full border border-slate-700 hover:border-sky-400 shadow-2xl transition-all cursor-pointer flex items-center gap-1.5 font-black text-xs active:scale-95 group backdrop-blur-md"
+      title="Scroll immediately back to the top of the page"
+    >
+      <span className="text-sm group-hover:-translate-y-0.5 transition-transform">⬆️</span>
+      <span>Back to Top</span>
+    </button>
+  ) : null;
+
+  // If user is at the top of the page, the main roll cards are already in front of them
+  if (scrollY < 220) {
+    return null;
+  }
+
   if (isMinimized) {
     return (
-      <aside aria-label="Legacy rolls quick summary" className="fixed bottom-3 right-4 z-40 animate-bounce-subtle">
-        <button
-          onClick={() => setIsMinimized(false)}
-          className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow-2xl border border-amber-300 flex items-center gap-2 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-          title="Click to view all 5 Legacy Rolls visible from the bottom"
-        >
-          <span>👑</span>
-          <span>Gen {currentRoll.generation} Rolls Summary (5 Rolls)</span>
-          <span className="bg-black/30 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">
-            ▲ Expand
-          </span>
-        </button>
-      </aside>
+      <>
+        {scrollToTopButton}
+        <aside aria-label="Legacy rolls quick summary" className="fixed bottom-3 right-4 z-40 animate-bounce-subtle">
+          <button
+            onClick={() => handleToggleMinimize(false)}
+            className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow-2xl border border-amber-300 flex items-center gap-2 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            title="Click to view all 5 Legacy Rolls visible from the bottom"
+          >
+            <span>👑</span>
+            <span>Gen {currentRoll.generation} Rolls Reference (5 Rolls)</span>
+            <span className="bg-black/30 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">
+              ▲ Show Bar
+            </span>
+          </button>
+        </aside>
+      </>
     );
   }
 
   return (
-    <aside aria-label="Legacy rolls quick summary" className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t-2 border-amber-500/80 shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.7)] transition-all text-slate-100">
-      {/* Top Header Bar */}
-      <div className="max-w-[1300px] mx-auto px-4 py-2 flex items-center justify-between flex-wrap gap-2 border-b border-slate-800 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-          <span className="font-black text-amber-400 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-            <span>👑</span>
-            <span>Gen {currentRoll.generation} Quick Rolls Reference</span>
-          </span>
-          <span className="text-[10px] bg-slate-850 text-slate-300 border border-slate-700 px-2 py-0.5 rounded font-mono">
-            All 5 Core Laws Visible
-          </span>
-        </div>
+    <>
+      {scrollToTopButton}
+      <aside aria-label="Legacy rolls quick summary" className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t-2 border-amber-500/80 shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.7)] transition-all text-slate-100 max-h-[35vh] flex flex-col">
+        {/* Top Header Bar */}
+        <div className="max-w-[1300px] mx-auto w-full px-4 py-1.5 flex items-center justify-between flex-wrap gap-2 border-b border-slate-800 text-xs shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span className="font-black text-amber-400 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <span>👑</span>
+              <span>Gen {currentRoll.generation} Quick Rolls Reference</span>
+            </span>
+            <span className="text-[10px] bg-slate-850 text-slate-300 border border-slate-700 px-2 py-0.5 rounded font-mono hidden sm:inline">
+              5 Core Laws
+            </span>
+          </div>
 
-        <div className="flex items-center gap-2">
-          {onScrollToRolls && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={onScrollToRolls}
-              className="text-[11px] bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white px-2.5 py-1 rounded border border-slate-700 flex items-center gap-1 cursor-pointer transition-colors"
+              onClick={handleScrollTop}
+              className="text-[11px] bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white px-2.5 py-1 rounded border border-slate-700 flex items-center gap-1 cursor-pointer transition-colors font-bold"
               title="Scroll directly up to the main rolls section"
             >
               <span>⬆️</span>
-              <span>Scroll to Rolls</span>
+              <span>Scroll to Top</span>
             </button>
-          )}
 
-          {onOpenRulebook && (
+            {onOpenRulebook && (
+              <button
+                onClick={onOpenRulebook}
+                className="text-[11px] bg-slate-900 hover:bg-sky-950 text-sky-300 hover:text-sky-200 px-2.5 py-1 rounded border border-sky-800/60 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Open full PieceOfPrincess rulebook"
+              >
+                <span>📖</span>
+                <span>Rulebook</span>
+              </button>
+            )}
+
             <button
-              onClick={onOpenRulebook}
-              className="text-[11px] bg-slate-900 hover:bg-sky-950 text-sky-300 hover:text-sky-200 px-2.5 py-1 rounded border border-sky-800/60 flex items-center gap-1 cursor-pointer transition-colors"
-              title="Open full PieceOfPrincess rulebook"
+              onClick={() => setIsExpanded(prev => !prev)}
+              className="text-[11px] bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-bold px-2.5 py-1 rounded border border-amber-500/50 flex items-center gap-1 cursor-pointer transition-all"
+              title="Toggle full text rules & constraints"
             >
-              <span>📖</span>
-              <span>Rulebook</span>
+              <span>{isExpanded ? '▼' : '▲'}</span>
+              <span>{isExpanded ? 'Compact Bar' : 'Detailed Directives'}</span>
             </button>
-          )}
 
-          <button
-            onClick={() => setIsExpanded(prev => !prev)}
-            className="text-[11px] bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-bold px-2.5 py-1 rounded border border-amber-500/50 flex items-center gap-1 cursor-pointer transition-all"
-            title="Toggle full text rules & constraints"
-          >
-            <span>{isExpanded ? '▼' : '▲'}</span>
-            <span>{isExpanded ? 'Compact Bar' : 'Detailed Directives'}</span>
-          </button>
-
-          <button
-            onClick={() => setIsMinimized(true)}
-            className="text-slate-400 hover:text-white px-2 py-1 rounded text-xs font-bold hover:bg-slate-800 cursor-pointer"
-            title="Minimize to floating button"
-          >
-            ✕ Minimize
-          </button>
+            <button
+              onClick={() => handleToggleMinimize(true)}
+              className="text-slate-400 hover:text-white px-2 py-1 rounded text-xs font-bold hover:bg-slate-800 cursor-pointer"
+              title="Minimize to floating button in bottom corner"
+            >
+              ✕ Minimize
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* 5 Rolls Compact Grid */}
-      <div className="max-w-[1300px] mx-auto px-4 py-2.5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 text-xs">
+        {/* 5 Rolls Compact Grid with max-height and internal scroll so it never traps the screen */}
+        <div className="max-w-[1300px] mx-auto w-full px-4 py-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 text-xs overflow-y-auto max-h-[calc(35vh-42px)] scrollbar-thin scrollbar-thumb-slate-700">
         {/* 1. Marital Status */}
         <div className="bg-slate-900/90 p-2 rounded-xl border border-sky-500/30 flex flex-col justify-between hover:border-sky-400 transition-all min-w-0">
           <div>
@@ -379,7 +430,7 @@ export const StickyRollsBottomBar: React.FC<StickyRollsBottomBarProps> = ({
             )}
           </div>
           {isExpanded && (
-            <div className="mt-1.5 pt-1.5 border-t border-slate-800 text-[11px] text-slate-300 leading-tight space-y-1.5">
+            <div className="mt-1.5 pt-1.5 border-t border-slate-800 text-[11px] text-slate-300 leading-tight space-y-1.5 max-h-36 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700">
               <p>{currentRoll.goal.entry.description}</p>
               {currentRoll.goal.entry.id === 12 && (
                 isHeirAdult && currentRoll.goal.midlifeCrisisRevealed && currentRoll.goal.midlifeCrisisAspects && currentRoll.goal.midlifeCrisisAspects.length > 0 ? (
@@ -424,12 +475,13 @@ export const StickyRollsBottomBar: React.FC<StickyRollsBottomBarProps> = ({
             </div>
           </div>
           {isExpanded && (
-            <p className="mt-1.5 pt-1.5 border-t border-slate-800 text-[11px] text-slate-300 leading-tight">
+            <p className="mt-1.5 pt-1.5 border-t border-slate-800 text-[11px] text-slate-300 leading-tight max-h-32 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700">
               {currentRoll.fun.entry.description}
             </p>
           )}
         </div>
       </div>
     </aside>
-  );
+  </>
+);
 };
