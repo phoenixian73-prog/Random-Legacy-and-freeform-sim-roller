@@ -1,6 +1,7 @@
-import {StrictMode} from 'react';
-import {createRoot} from 'react-dom/client';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
 function mount() {
@@ -9,7 +10,9 @@ function mount() {
   const root = createRoot(container);
   root.render(
     <StrictMode>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </StrictMode>,
   );
 }
@@ -19,4 +22,3 @@ if (document.readyState === 'loading') {
 } else {
   mount();
 }
-

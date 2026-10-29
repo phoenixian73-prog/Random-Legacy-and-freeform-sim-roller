@@ -418,7 +418,7 @@ export function getDeathOptions(sim: Sim): string[] {
   return options;
 }
 
-export function generateSimObject(forceStage: string | null = null, forceId: number = 1, forceType: string | null = null): Sim {
+export function generateSimObject(forceStage: string | null = null, forceId: number = 1, forceType: string | null = null, isLegacy: boolean = false): Sim {
   const isPet = forceType === "Pet" ? true : (forceType === "Human" ? false : (forceStage ? false : (Math.random() < 0.25)));
   let sTraits: string[] = [];
   let supplementaryTraits: string[] = [];
@@ -469,6 +469,10 @@ export function generateSimObject(forceStage: string | null = null, forceId: num
   let sRoll = Math.random();
 
   let allowedOccults = db.occults.filter(o => o !== "Imaginary Friend");
+  // PieceOfPrincess Random Legacy Rule: Servos cannot reproduce biologically and are strictly excluded from Legacy Challenge
+  if (isLegacy) {
+    allowedOccults = allowedOccults.filter(o => o !== "Servo");
+  }
   if (["Infant", "Toddler", "Child", "Teen"].includes(stage!)) {
     allowedOccults = allowedOccults.filter(o => o !== "Servo");
   }
@@ -487,7 +491,11 @@ export function generateSimObject(forceStage: string | null = null, forceId: num
   if (req.occult) occult = req.occult;
 
   if (occult === "Servo") {
-    if (["Infant", "Toddler", "Child", "Teen"].includes(stage!)) stage = "Young Adult";
+    if (isLegacy) {
+      occult = "None";
+    } else if (["Infant", "Toddler", "Child", "Teen"].includes(stage!)) {
+      stage = "Young Adult";
+    }
   }
 
   let cause = "N/A";
@@ -909,19 +917,48 @@ export function addLotChallenge(currentChallenges: string[], dwellingType?: stri
 }
 
 /**
- * Synchronizes pregnancy mechanics for a romantic couple (Heir and Spouse/Partner).
- * Ensures matching biological compatibility: one partner is designated as the carrier
- * ("Can get pregnant" with nursing enabled) and the other as the impregnator
- * ("Can get others pregnant"). Non-couple Sims retain pure random CAS rolls.
+ * Synchronizes pregnancy mechanics for a romantic couple (disregarding gender).
+ * Pairs the couple in a reproductively compatible fashion:
+ * Exactly ONE partner is assigned "Can get pregnant" (with nursing milk: "Yes")
+ * and the OTHER partner is assigned "Can get others pregnant".
+ * Both same-sex and opposite-sex couples are 100% guaranteed biological reproduction.
  */
-export function synchronizeCouplePregnancy(heir: Sim, partner: Sim): void {
-  if (!heir || !partner || heir.isPet || partner.isPet) return;
-  if (heir.occult === "Servo" || partner.occult === "Servo") return;
+export function synchronizeCouplePregnancy(simA: Sim, simB: Sim): void {
+  if (!simA || !simB || simA.isPet || simB.isPet) return;
+  if (simA.occult === "Servo" || simB.occult === "Servo") return;
 
-  // Allow either partner to be the carrier while matching the other
-  const heirCarries = Math.random() < 0.5;
-  const carrier = heirCarries ? heir : partner;
-  const impregnator = heirCarries ? partner : heir;
+  const aCanCarry = simA.pregnancy === "Can get pregnant";
+  const aCanImpregnate = simA.pregnancy === "Can get others pregnant";
+  const bCanCarry = simB.pregnancy === "Can get pregnant";
+  const bCanImpregnate = simB.pregnancy === "Can get others pregnant";
+
+  // If already complementarily paired (one carries, one impregnates), keep their assignment
+  if ((aCanCarry && bCanImpregnate) || (aCanImpregnate && bCanCarry)) {
+    return;
+  }
+
+  let carrier: Sim;
+  let impregnator: Sim;
+
+  if (aCanCarry) {
+    carrier = simA;
+    impregnator = simB;
+  } else if (bCanCarry) {
+    carrier = simB;
+    impregnator = simA;
+  } else if (aCanImpregnate) {
+    impregnator = simA;
+    carrier = simB;
+  } else if (bCanImpregnate) {
+    impregnator = simB;
+    carrier = simA;
+  } else {
+    // Neither has a defined reproductive role (or both rolled "Neither")
+    // Disregarding gender: 50/50 randomized designation
+    const aCarries = Math.random() < 0.5;
+    carrier = aCarries ? simA : simB;
+    impregnator = aCarries ? simB : simA;
+  }
 
   carrier.pregnancy = "Can get pregnant";
   carrier.milk = "Yes";
@@ -1073,6 +1110,7 @@ export function calculateRelations(
         const rel = roll(["Spouse", "Spouse", "Partner"]);
         unit1Adults[0].customRelations![unit1Adults[1].id] = rel;
         unit1Adults[1].customRelations![unit1Adults[0].id] = rel;
+        synchronizeCouplePregnancy(unit1Adults[0], unit1Adults[1]);
         partnered.add(unit1Adults[0].id);
         partnered.add(unit1Adults[1].id);
       } else if (availableAdults.length === 1) {
@@ -1082,6 +1120,7 @@ export function calculateRelations(
         unit1Adults.push(availableTeens.shift()!);
         unit1Adults[0].customRelations![unit1Adults[1].id] = "Partner";
         unit1Adults[1].customRelations![unit1Adults[0].id] = "Partner";
+        synchronizeCouplePregnancy(unit1Adults[0], unit1Adults[1]);
         partnered.add(unit1Adults[0].id);
         partnered.add(unit1Adults[1].id);
       }
@@ -1123,6 +1162,7 @@ export function calculateRelations(
           const rel = roll(["Spouse", "Spouse", "Partner"]);
           unit2Adults[0].customRelations![unit2Adults[1].id] = rel;
           unit2Adults[1].customRelations![unit2Adults[0].id] = rel;
+          synchronizeCouplePregnancy(unit2Adults[0], unit2Adults[1]);
           partnered.add(unit2Adults[0].id);
           partnered.add(unit2Adults[1].id);
         } else if (availableAdults.length === 1) {
@@ -1185,6 +1225,7 @@ export function calculateRelations(
         const rel = roll(["Spouse", "Spouse", "Partner"]);
         coupleA.customRelations![coupleB.id] = rel;
         coupleB.customRelations![coupleA.id] = rel;
+        synchronizeCouplePregnancy(coupleA, coupleB);
         partnered.add(coupleA.id);
         partnered.add(coupleB.id);
       } else if (adultsPool.length === 1) {
@@ -1194,6 +1235,7 @@ export function calculateRelations(
         coupleB = teensPool[1];
         coupleA.customRelations![coupleB.id] = "Partner";
         coupleB.customRelations![coupleA.id] = "Partner";
+        synchronizeCouplePregnancy(coupleA, coupleB);
         partnered.add(coupleA.id);
         partnered.add(coupleB.id);
       }
@@ -1239,6 +1281,7 @@ export function calculateRelations(
           const rel = roll(["Spouse", "Partner"]);
           sim.customRelations![offshootPartner.id] = rel;
           offshootPartner.customRelations![sim.id] = rel;
+          synchronizeCouplePregnancy(sim, offshootPartner);
           partnered.add(sim.id);
           partnered.add(offshootPartner.id);
 
@@ -1354,6 +1397,9 @@ export function calculateRelations(
           sA.customDynamics[sB.id] = synchedRom;
           if (!sB.customDynamics) sB.customDynamics = {};
           sB.customDynamics[sA.id] = synchedRom;
+
+          // Always ensure couple has biologically reproducible pairing disregarding gender
+          synchronizeCouplePregnancy(sA, sB);
         } else if (preserveManual && sA.pairwiseRelations?.[sB.id]?.dynamic) {
           const prev = sA.pairwiseRelations[sB.id].dynamic;
           if (prev && prev !== "None") {

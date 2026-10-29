@@ -103,6 +103,10 @@ export const RandomLegacyChallenge: React.FC<RandomLegacyChallengeProps> = ({
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed.generation === 'number') {
+          // Validate schema integrity against outdated or corrupted localStorage formats
+          if (!parsed.marital?.entry || !parsed.children || !parsed.heirCareer || !parsed.goal?.entry || !parsed.fun?.entry) {
+            return rollCompleteLegacyGeneration(parsed.generation || 1, allPackCodes);
+          }
           // Backfill heirOrder and description if not present, preserving the existing generation completely!
           if (!parsed.children?.heirOrder) {
             const count = parsed.children?.targetCount || 1;

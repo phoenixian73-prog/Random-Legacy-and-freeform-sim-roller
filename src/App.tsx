@@ -352,7 +352,7 @@ export default function App() {
 
     for (let i = 0; i < size; i++) {
       let forceStage = (i === 0) ? "Random Teen+" : null;
-      let sim = generateSimObject(forceStage, i + 1);
+      let sim = generateSimObject(forceStage, i + 1, null, activeMode === 'legacy');
       newHousehold.push(sim);
     }
 
@@ -408,7 +408,7 @@ export default function App() {
     // If age is "Random", allow Pet generation (pass null for forceType)
     // Otherwise force "Human"
     const forceType = age === "Random" ? null : "Human";
-    const newSim = generateSimObject(age === "Random" ? null : age, newId, forceType);
+    const newSim = generateSimObject(age === "Random" ? null : age, newId, forceType, activeMode === 'legacy');
     
     // Clone existing sims to avoid mutation during calculateRelations
     let newHousehold = [...household.map(s => ({ ...s })), newSim];
@@ -725,6 +725,10 @@ export default function App() {
       if (!simToRoll || simToRoll.isPet) return prev;
 
       let allowedOccults = [...db.occults];
+      // In Random Legacy Challenge, Servos cannot reproduce biologically and are strictly excluded!
+      if (activeMode === 'legacy') {
+        allowedOccults = allowedOccults.filter(o => o !== "Servo");
+      }
       if (["Infant", "Toddler", "Child", "Teen"].includes(simToRoll.stage)) {
         allowedOccults = allowedOccults.filter(o => o !== "Servo");
       }
@@ -747,6 +751,10 @@ export default function App() {
   };
 
   const handleOccultChange = (id: number, newOccult: string) => {
+    if (activeMode === 'legacy' && newOccult === "Servo") {
+      triggerNotice("⚠️ Servo cannot reproduce biologically and is excluded in Random Legacy Challenge! Servo is 100% available in Sandbox mode.");
+      return;
+    }
     setHousehold(prev => {
       const newHousehold = prev.map(sim => {
         if (sim.id !== id || sim.isPet) return { ...sim };
@@ -1298,8 +1306,8 @@ export default function App() {
     const willBeOnlyTeen = (household[idx].isFunctional && !household[idx].isPet && functionalCount === 1);
 
     let newSim: Sim;
-    if (willBeOnlyTeen && age === "Random Teen+") newSim = generateSimObject("Random Teen+", id, "Human");
-    else newSim = generateSimObject(age, id, "Human");
+    if (willBeOnlyTeen && age === "Random Teen+") newSim = generateSimObject("Random Teen+", id, "Human", activeMode === 'legacy');
+    else newSim = generateSimObject(age, id, "Human", activeMode === 'legacy');
 
     // Clone all sims
     const newHousehold = household.map(s => ({ ...s }));
@@ -1419,11 +1427,41 @@ export default function App() {
   };
 
   const handleUpdateCustomGender = (id: number, field: string, value: string) => {
-    setHousehold(prev => prev.map(sim => {
-      if (sim.id !== id) return sim;
-      return { ...sim, [field]: value };
-    }));
-    triggerNotice(`⚙️ Updated Sim ${id}'s CAS setting (${field}) to "${value}"!`);
+    setHousehold(prev => {
+      const currentSim = prev.find(s => s.id === id);
+      if (!currentSim) return prev;
+
+      let updated = prev.map(sim => {
+        if (sim.id !== id) return sim;
+        return { ...sim, [field]: value };
+      });
+
+      // If updating pregnancy on a partner in a couple, keep the couple paired in a reproductively compatible fashion disregarding gender!
+      if (field === 'pregnancy') {
+        const romanceRels = ["Spouse", "Partner", "Engaged", "WooHoo Partner"];
+        const partnerEntry = Object.entries(currentSim.customRelations || {}).find(([partnerId, rel]) => 
+          romanceRels.includes(rel as string)
+        );
+        if (partnerEntry) {
+          const partnerId = Number(partnerEntry[0]);
+          updated = updated.map(sim => {
+            if (sim.id !== partnerId) return sim;
+            if (value === "Can get pregnant") {
+              return { ...sim, pregnancy: "Can get others pregnant" };
+            } else if (value === "Can get others pregnant") {
+              return { ...sim, pregnancy: "Can get pregnant", milk: "Yes" };
+            }
+            return sim;
+          });
+          const compRole = value === "Can get pregnant" ? "Can get others pregnant" : "Can get pregnant";
+          triggerNotice(`🧬 Reproductively Paired Couple (Disregarding Gender): Sim ${id} (${value}) ⚭ Sim ${partnerId} (${compRole})!`);
+          return updated;
+        }
+      }
+
+      triggerNotice(`⚙️ Updated Sim ${id}'s CAS setting (${field}) to "${value}"!`);
+      return updated;
+    });
   };
 
   const handleUpdatePairDynamic = (simAId: number, simBId: number, newDynamic: string) => {
@@ -1473,9 +1511,7 @@ export default function App() {
             s.customRelations?.[id] === "Engaged" ||
             sim.customRelations?.[s.id] === "Spouse" ||
             sim.customRelations?.[s.id] === "Partner" ||
-            sim.customRelations?.[s.id] === "Engaged" ||
-            s.spouseId === id ||
-            sim.spouseId === s.id
+            sim.customRelations?.[s.id] === "Engaged"
           )
         );
         if (partner) {
@@ -2441,6 +2477,7 @@ export default function App() {
               key={sim.id}
               sim={sim}
               household={household}
+              isLegacyMode={activeMode === 'legacy'}
               onToggleGhost={handleToggleGhost}
               onUpdateDeath={handleUpdateDeath}
               onRerollOccult={handleRerollOccult}

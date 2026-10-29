@@ -589,7 +589,7 @@ export function populateHouseholdFromLegacy(
       heirSim.asp = roll(getCompatibleAspirationsForCareer(heirCareerStr, db.aspirationsAdult));
     }
   } else {
-    heirSim = generateSimObject("Young Adult", nextId++, "Human");
+    heirSim = generateSimObject("Young Adult", nextId++, "Human", true);
     heirSim.isDeceased = false;
     heirSim.career = heirCareerStr;
     if (!isAspirationAllowedForCareer(heirSim.asp, heirCareerStr)) {
@@ -629,7 +629,7 @@ export function populateHouseholdFromLegacy(
   // 2. Partners based on Marital Status
   for (let p = 0; p < marital.partnerCount; p++) {
     if (newHousehold.length >= 8) break;
-    const partner = generateSimObject("Young Adult", nextId++, "Human");
+    const partner = generateSimObject("Young Adult", nextId++, "Human", true);
     const assignedSlot = spouseSlots[p] || secondarySlots[p] || null;
     partner.career = assignedSlot ? formatCareerLabel(assignedSlot.career) : formatCareerLabel(legacyRoll.secondaryCareer);
     if (!isAspirationAllowedForCareer(partner.asp, partner.career)) {
@@ -654,10 +654,8 @@ export function populateHouseholdFromLegacy(
     partner.customDynamics = { [heirSim.id]: assignedRomDyn };
     heirSim.customDynamics = { ...(heirSim.customDynamics || {}), [partner.id]: assignedRomDyn };
 
-    // Synchronize matching pregnancy mechanics ONLY when a spouse is rolled in the adequate generation roll!
-    if (marital.partnerCount > 0 && p === 0) {
-      synchronizeCouplePregnancy(heirSim, partner);
-    }
+    // Pair couple in a reproductively compatible fashion disregarding gender
+    synchronizeCouplePregnancy(heirSim, partner);
 
     newHousehold.push(partner);
   }
@@ -668,7 +666,7 @@ export function populateHouseholdFromLegacy(
     const occultPool = ["Vampire", "Spellcaster", "Werewolf", "Mermaid", "Alien"];
     for (let h = 0; h < marital.helperCount; h++) {
       if (newHousehold.length >= 8) break;
-      const helper = generateSimObject("Young Adult", nextId++, "Human");
+      const helper = generateSimObject("Young Adult", nextId++, "Human", true);
       helper.occult = occultPool[h % occultPool.length];
       const assignedSlot = helperSlots[h] || secondarySlots[marital.partnerCount + h] || null;
       helper.career = assignedSlot ? formatCareerLabel(assignedSlot.career) : formatCareerLabel(legacyRoll.secondaryCareer);
@@ -684,7 +682,7 @@ export function populateHouseholdFromLegacy(
   } else if (marital.helperCount > 0) {
     for (let h = 0; h < marital.helperCount; h++) {
       if (newHousehold.length >= 8) break;
-      const helper = generateSimObject("Young Adult", nextId++, "Human");
+      const helper = generateSimObject("Young Adult", nextId++, "Human", true);
       const assignedSlot = helperSlots[h] || secondarySlots[marital.partnerCount + h] || null;
       helper.career = assignedSlot ? formatCareerLabel(assignedSlot.career) : formatCareerLabel(legacyRoll.secondaryCareer);
       if (!isAspirationAllowedForCareer(helper.asp, helper.career)) {
@@ -723,7 +721,7 @@ export function populateHouseholdFromLegacy(
       const isNextHeir = ((c + 1) === designatedHeirOrder);
       const childAge = "Infant";
 
-      const childSim = generateSimObject(childAge, nextId++, "Human");
+      const childSim = generateSimObject(childAge, nextId++, "Human", true);
       childSim.isNextHeir = isNextHeir;
       childSim.isAdopted = isAdopted;
 
@@ -889,7 +887,7 @@ export function createLegacyChildSim(
   }
 
   const nextId = household.length ? Math.max(...household.map(s => s.id)) + 1 : 1;
-  const childSim = generateSimObject("Infant", nextId, "Human");
+  const childSim = generateSimObject("Infant", nextId, "Human", true);
 
   if (options?.gender) {
     childSim.baseGender = options.gender;
